@@ -116,3 +116,42 @@
        (map (partial filter (comp not nil?)))
        (map (comp first break-byte-xor))
        (map :key)))
+
+(defn pkcs7
+  [arg len]
+  (let [nb (- len (rem (count arg) len))]
+    (into (repeat nb (byte nb)) (reverse (map byte arg)))))
+
+(defn rm-pkcs7 [arg]
+  (let [n (int (last arg))]
+    (cond
+      (not (pos? n)) (throw (Exception. "PKCS#7 Bad padding"))
+      (not (apply = (take-last n arg))) (throw (Exception. "PKCS#7 Bad padding"))
+      :else (drop-last n arg))))
+
+(defn parse-kv [arg sep1 sep2]
+  (->> (clojure.string/split arg (re-pattern (str sep1)))
+       (map #(clojure.string/split % (re-pattern (str sep2))))
+       (flatten)
+       (apply hash-map)
+       (clojure.walk/keywordize-keys)))
+
+(defn admin?
+  "Decrypt and test if the string contains admin=true"
+  [decrypt-fn sep1 sep2 cipher]
+  (if-let [msg (->> (decrypt-fn cipher)
+                   ; (#(decrypt-cbc % encryption-key (repeat 0)))
+                   ; (remove-pkcs7-pad)
+                    )]
+    (->> msg
+         (map unchecked-char)
+         (apply str)
+         (#(clojure.string/split % (re-pattern (str sep1))))
+         (map #(clojure.string/split % (re-pattern (str sep2))))
+         (filter #(even? (count %)))
+         (flatten)
+         (apply hash-map)
+         (clojure.walk/keywordize-keys)
+         (:admin)
+         (= "true"))
+    false))
