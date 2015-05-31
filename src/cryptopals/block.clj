@@ -149,3 +149,25 @@
           (if (nil? valid-cipher)
             (recur (concat (list \A) in))
             (hash-map :input in :new-cipher valid-cipher)))))))
+
+(defn cbc-break-byte [pad-oracle cipher-block arg bs]
+  (let [n (inc (count arg))
+        in (map int (byte-array-xor arg (repeat bs n)))
+        blocks (map #(take-last bs (into (conj in %) (repeat bs 0))) (range 0 256))]
+    (when-let [guess (first (filter #(pad-oracle (byte-array (concat % cipher-block)) (repeat bs 0)) blocks))]
+      (byte-array-xor (repeat 16 n) guess))))
+
+(defn cbc-break-block [pad-oracle cipher-block bs]
+  (loop [guess nil i bs]
+    (if (zero? i)
+      guess
+      (recur (drop (dec i) (cbc-break-byte pad-oracle cipher-block guess bs)) (dec i)))))
+
+(defn cbc-break-message [pad-oracle cipher iv bs]
+  (->> (partition bs cipher)
+       (map #(cbc-break-block pad-oracle % bs))
+       (flatten)
+       (byte-array-xor (concat iv cipher))
+       (rm-pkcs7)
+       (map char)
+       (apply str)))

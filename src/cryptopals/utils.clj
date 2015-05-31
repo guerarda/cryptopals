@@ -71,13 +71,14 @@
 (defn repeat-xor [arg b]
   (map bit-xor (map int arg) (flatten (repeat b))))
 
+
 (defn break-byte-xor
   ([arg]
    (break-byte-xor arg score-english-text))
   ([arg score-fn]
-   (let [key-fn (fn [x] (->> (repeat-xor arg x)
+   (let [key-fn (fn [x] (->> (repeat-xor arg (unchecked-byte x))
                              (bytes->str)
-                             (hash-map :key (unchecked-char x) :message)
+                             (hash-map :key (unchecked-byte x) :message)
                              (#(assoc % :score (score-fn (:message %))))))]
      (sort-by :score < (map key-fn (range 0 256))))))
 

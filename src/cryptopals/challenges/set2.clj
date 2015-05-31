@@ -54,8 +54,7 @@
         decrypt-profile (fn [x] (-> (decrypt-ecb x key)
                                     (rm-pkcs7)
                                     (bytes->str)
-                                    (parse-kv \& \=)
-                                    ))]
+                                    (parse-kv \& \=)))]
     (let [email "foo@gmail.com"
           user-blocks (take 2 (partition 16 (encrypt-profile email)))
           admin-block (->> (.getBytes "admin")
