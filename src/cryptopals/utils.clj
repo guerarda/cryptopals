@@ -27,12 +27,9 @@
   (bit-and 0xffffffff x))
 
 (defn bit-rotate-left [x n]
-  (let [y (lo32 x)] (cond
-                      (instance? Integer x) (bit-or
-                                             (bit-shift-left y n)
-                                             (bit-shift-right y (- Integer/SIZE n)))
-;                      (instance? Integer x) (Integer/rotateLeft x n)
-                      (instance? Long x) (Long/rotateLeft x n))))
+  (cond
+    (instance? Integer x) (Integer/rotateLeft x n)
+    (instance? Long x) (Long/rotateLeft x n)))
 
 (defn bit-rotate-right [x n]
   (cond
