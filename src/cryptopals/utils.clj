@@ -16,6 +16,17 @@
 (defn bytes->str [x]
   (apply str (map unchecked-char x)))
 
+(defn num->bytes
+  ([num]
+   (let [x (BigInteger/valueOf num)]
+     (->> (range 0 (.bitLength x) 8)
+          (map  #(.shiftRight x %))
+          (map #(.and % (BigInteger/valueOf 0xff)))
+          (map unchecked-byte)
+          (reverse)
+          ))))
+
+
 (defn byte-array-xor
   [a b]
   (byte-array (map bit-xor (map int a) (map int b))))

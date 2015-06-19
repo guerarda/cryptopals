@@ -3,7 +3,7 @@
             [cryptopals.sha1 :refer :all]))
 
 (defn format-sha1 [hash]
-  (apply str (map (partial format "%x") hash)))
+  (apply str (map (partial format "%02x") hash)))
 (deftest sha1-test
   (testing "Input: abc"
     (let [arg "abc"]

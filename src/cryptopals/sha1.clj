@@ -1,5 +1,5 @@
 (ns cryptopals.sha1
-  (:require [cryptopals.utils :refer :all]))
+  (:require [cryptopals.utils :refer [bit-rotate-left lo32 lo8]]))
 
 (defn- bytes->int [& args]
   (let [shift-fn (fn [a b c d]
@@ -47,12 +47,33 @@
 (def ^:int ^:const ^:private h3 0x10325476)
 (def ^:int ^:const ^:private h4 0xc3d2e1f0)
 
+;; Works if input is string
+;; Needs fixin
+
 (defn sha1 [arg]
   (let [ml (count arg)
         ms (take-last 8 (concat (repeat 8 0) (.toByteArray (BigInteger/valueOf (* 8 ml)))))
-        m (-> (mapv byte arg)
+        m (-> (mapv (comp unchecked-byte) (map int arg))
               (conj (unchecked-byte 0x80))
               (conj (repeat (mod (- 56 (inc ml)) 64) 0))
               (conj ms)
               (flatten))]
     (reduce hash-chunk [h0 h1 h2 h3 h4] (map (partial apply bytes->int) (partition 64 m)))))
+
+(defn sha1-pad [len]
+  (let [ms (take-last 8 (concat (repeat 8 0) (.toByteArray (BigInteger/valueOf (* 8 len)))))]
+    (-> [(unchecked-byte 0x80)]
+        (conj (repeat (mod (- 56 (inc len)) 64) 0))
+        (conj ms)
+        (flatten))))
+
+(defn sha1-extend [arg h len]
+  (let [ml (count arg)
+        ms (take-last 8 (concat (repeat 8 0) (.toByteArray (BigInteger/valueOf (* 8 len)))))
+        m (-> (mapv (comp unchecked-byte) (map int arg))
+              (conj (unchecked-byte 0x80))
+              (conj (repeat (mod (- 56 (inc ml)) 64) 0))
+              (conj ms)
+              (flatten))]
+    (reduce hash-chunk h (map (partial apply bytes->int) (partition 64 m)))
+    ))
