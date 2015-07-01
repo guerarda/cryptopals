@@ -1,14 +1,6 @@
 (ns cryptopals.sha1
-  (:require [cryptopals.utils :refer [bit-rotate-left lo32 lo8]]))
+  (:require [cryptopals.utils :refer [bytes->int bit-rotate-left lo32 num->bytes]]))
 
-(defn- bytes->int [& args]
-  (let [shift-fn (fn [a b c d]
-                   (bit-or (lo8 d)
-                           (bit-shift-left (lo8 c) 8)
-                           (bit-shift-left (lo8 b) 16)
-                           (bit-shift-left (lo8 a) 24)))
-        coll (concat args '(0 0 0))]
-    (map #(apply shift-fn %) (partition 4 coll))))
 
 (defn- calc-v [i w v h]
   (let [[a b c d e] v
@@ -58,7 +50,11 @@
               (conj (repeat (mod (- 56 (inc ml)) 64) 0))
               (conj ms)
               (flatten))]
-    (reduce hash-chunk [h0 h1 h2 h3 h4] (map (partial apply bytes->int) (partition 64 m)))))
+    (->> (partition 64 m)
+         (map (partial apply bytes->int))
+         (reduce hash-chunk [h0 h1 h2 h3 h4])
+         (map num->bytes)
+         (flatten))))
 
 (defn sha1-pad [len]
   (let [ms (take-last 8 (concat (repeat 8 0) (.toByteArray (BigInteger/valueOf (* 8 len)))))]
@@ -75,5 +71,8 @@
               (conj (repeat (mod (- 56 (inc ml)) 64) 0))
               (conj ms)
               (flatten))]
-    (reduce hash-chunk h (map (partial apply bytes->int) (partition 64 m)))
-    ))
+    (->> (partition 64 m)
+         (map (partial apply bytes->int))
+         (reduce hash-chunk (vec (apply bytes->int h)))
+         (map num->bytes)
+         (flatten))))

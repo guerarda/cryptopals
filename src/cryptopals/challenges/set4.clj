@@ -2,7 +2,9 @@
   (:require [cryptopals.utils :refer :all]
             [cryptopals.block :refer :all]
             [cryptopals.stream :refer :all]
-            [cryptopals.sha1 :refer :all]))
+            [cryptopals.sha1 :refer :all]
+            [cryptopals.hmac :refer :all]
+            [clj-http.client :as client]))
 
 (defn challenge-25
   "Break random access read/write AES CTR"
@@ -82,13 +84,71 @@
         (let [m (map byte (concat (sha1-pad (+ kl len)) arg))
               nmac (sha1-extend arg mac (+ (count m) kl len))]
           (if (auth-fn (concat prefix m) nmac)
-            {:msg (bytes->str m) :mac nmac :omac mac}
+            {:msg (bytes->str m) :mac nmac :key-len kl}
             (recur (inc kl))))))))
 
 (defn challenge-30
   "Break an MD4 keyed MAC using length extension"
   [])
 
-(defn challlenge-31
+(defn challenge-31
   "Implement and break HMAC-SHA1 with an artificial timing leak"
-  [])
+  []
+  (let [url-fn (fn [file sig] (str "http://localhost:3003/test?file=" file "&signature=" sig))
+        hmac-oracle (fn [url] (client/get url {:throw-exceptions false}))
+        file "foo"
+        status #(:status (hmac-oracle (url-fn file %)))
+        mac  (loop [s (vector-of :byte) i 0]
+               (if (= 20 i)
+                 s
+                 (let [v (map (comp (partial conj s) unchecked-byte) (range 0 256))]
+                   (recur  (->> (map bytes->hex v)
+                                (map #(:time (benchmark status %)))
+                                (#(interleave % v))
+                                (apply sorted-map-by <)
+                                (last)
+                                (last))
+                           (inc i)))))]
+    (if (= 200 (status (bytes->hex mac)))
+      (println (str "Success MAC: " (bytes->hex mac)))
+      (println (str "Failure MAC: " (bytes->hex mac))))))
+
+(defn box-cmp [i j x y]
+  (let [box-fn (fn [coll i j]
+                 (let [sc (sort coll)
+                       ci (nth sc (int (/ (* i (count coll)) 100)))
+                       cj (nth sc (int (/ (* j (count coll)) 100)))]
+                   [ci cj]))
+        [xi xj] (box-fn x i j)
+        [yi yj] (box-fn y i j)]
+    (cond
+      (and (< xi yi) (< xj yi)) -1
+      (and (> xi yi) (> xi yj)) 1
+      :else 0)))
+
+
+(defn challenge-32
+  "Implement and break HMAC-SHA1 with an artificial timing leak"
+  []
+  (let [url-fn (fn [file sig] (str "http://localhost:3003/test?file=" file "&signature=" sig))
+        hmac-oracle (fn [url] (client/get url {:throw-exceptions false}))
+        file "foo"
+        status #(:status (hmac-oracle (url-fn file %)))
+        max-box (fn [s k v] (if (pos? (box-cmp 6 8 (first s) k)) s [k v]))
+        mac  (loop [s (vector-of :byte) i 0]
+               (if (= i 20)
+                 s
+                 (let [v (map (comp (partial conj s) unchecked-byte) (range 0 256))]
+                   (recur  (->> (map bytes->hex v)
+                                (map (fn [x] (repeatedly 100 #(:time (benchmark status x)))))
+                                (#(interleave % v))
+                                (apply hash-map)
+                                (#(reduce-kv max-box (first %) %))
+                                (last)
+                                )
+                           (inc i)))))]
+    mac
+    ;; (if (= 200 (status (bytes->hex mac)))
+    ;;   (println (str "Success MAC: " (bytes->hex mac)))
+    ;;   (println (str "Failure MAC: " (bytes->hex mac))))
+    ))

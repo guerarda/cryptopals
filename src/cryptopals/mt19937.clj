@@ -3,19 +3,18 @@
 
 (def ^:const ^:private M 397)
 (def ^:const ^:private N 624)
-(def ^:const ^:private lo32 0xffffffff)
 
 (defstruct mt-state :mt :index)
 
 (defn init-mt [seed]
-  (loop [mt (list (bit-and lo32 seed)) i 1]
+  (loop [mt (list (lo32 seed)) i 1]
     (if (= N i)
       (struct mt-state (reverse mt) 0)
       (recur (->> (first mt)
                   (#(bit-xor % (bit-shift-right % 30)))
                   (+ i)
                   (* 0x6c078965)
-                  (bit-and lo32)
+                  (lo32)
                   (conj mt))
              (inc i)))))
 

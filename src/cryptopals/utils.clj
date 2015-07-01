@@ -1,20 +1,26 @@
 (ns cryptopals.utils
   (:require [clojure.data.codec.base64 :as b64]))
 
-(defn b64-decode [arg]
-  (b64/decode (.getBytes arg)))
+(defn lo8 [x]
+  (bit-and 0xff x))
 
-(defn hex-decode [arg]
-  (if (odd? (count arg))
-    (def x (str "0" x))
-    (def x arg))
-  (->> x
-       (partition 2)
-       (map #(apply str %))
-       (map #(Integer/parseInt % 16))))
+(defn lo32 [x]
+  (bit-and 0xffffffff x))
 
 (defn bytes->str [x]
   (apply str (map unchecked-char x)))
+
+(defn bytes->hex [x]
+  (apply str (map (partial format "%02x") x)))
+
+(defn bytes->int [& args]
+  (let [shift-fn (fn [a b c d]
+                   (bit-or (lo8 d)
+                           (bit-shift-left (lo8 c) 8)
+                           (bit-shift-left (lo8 b) 16)
+                           (bit-shift-left (lo8 a) 24)))
+        coll (concat args '(0 0 0))]
+    (map #(apply shift-fn %) (partition 4 coll))))
 
 (defn num->bytes
   ([num]
@@ -23,19 +29,23 @@
           (map  #(.shiftRight x %))
           (map #(.and % (BigInteger/valueOf 0xff)))
           (map unchecked-byte)
-          (reverse)
-          ))))
+          (reverse)))))
 
+(defn b64-decode [arg]
+  (b64/decode (.getBytes arg)))
+
+(defn hex-decode [arg]
+  (let [x (if (odd? (count arg))
+            (str 0 arg)
+            arg)]
+    (->> x
+         (partition 2)
+         (map #(apply str %))
+         (map #(Integer/parseInt % 16)))))
 
 (defn byte-array-xor
   [a b]
   (byte-array (map bit-xor (map int a) (map int b))))
-
-(defn lo8 [x]
-  (bit-and 0xff x))
-
-(defn lo32 [x]
-  (bit-and 0xffffffff x))
 
 (defn bit-rotate-left [x n]
   (cond
@@ -46,6 +56,12 @@
   (cond
     (instance? Integer x) (Integer/rotateRight x n)
     (instance? Long x) (Long/rotateRight x n)))
+
+(defn rand-bigint [num]
+  "Return random bigint below num, the same as (rand-int n)"
+  (loop []
+    (let [val (BigInteger. (.bitLength num) (java.util.Random.))]
+      (if (< val num) val (recur)))))
 
 (defn rand-byte-array
   [size]
@@ -162,7 +178,8 @@
        (map #(clojure.string/split % (re-pattern (str sep2))))
        (flatten)
        (apply hash-map)
-       (clojure.walk/keywordize-keys)))
+      ; (clojure.walk/keywordize-keys)
+       ))
 
 (defn admin?
   "Decrypt and test if the string contains admin=true"
@@ -179,7 +196,12 @@
          (filter #(even? (count %)))
          (flatten)
          (apply hash-map)
-         (clojure.walk/keywordize-keys)
+        ; (clojure.walk/keywordize-keys)
          (:admin)
          (= "true"))
     false))
+
+(defn benchmark [fn & args]
+  (let [start (System/nanoTime)
+        ret (apply fn args)]
+    {:ret ret :time (/ (double (- (System/nanoTime) start)) 1000000.)}))
