@@ -19,9 +19,7 @@
 (defn verify [file signature]
   (let [f (.getBytes file)
         s (hex-decode signature)]
-        (insecure-compare 5 [0 5 3 18] s)
-                                        ;        (insecure-compare 1 (hmac sha1 private-key f) s)
-        ))
+    (insecure-compare 1 (hmac sha1 private-key f) s)))
 
 (defroutes main-routes
   (GET "/test" [file signature]

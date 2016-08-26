@@ -60,7 +60,7 @@
 (defn rand-bigint [num]
   "Return random bigint below num, the same as (rand-int n)"
   (loop []
-    (let [val (BigInteger. (.bitLength num) (java.util.Random.))]
+    (let [val (BigInteger. (.bitLength (bigint num)) (java.util.Random.))]
       (if (< val num) val (recur)))))
 
 (defn rand-byte-array

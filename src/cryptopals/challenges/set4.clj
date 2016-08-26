@@ -130,22 +130,25 @@
 (defn challenge-32
   "Implement and break HMAC-SHA1 with an artificial timing leak"
   []
-  (let [url-fn (fn [file sig] (str "http://localhost:3003/test?file=" file "&signature=" sig))
+  (let [url-fn (fn [file sig] (str "http://localhost:3000/test?file=" file "&signature=" sig))
         hmac-oracle (fn [url] (client/get url {:throw-exceptions false}))
         file "foo"
         status #(:status (hmac-oracle (url-fn file %)))
         max-box (fn [s k v] (if (pos? (box-cmp 6 8 (first s) k)) s [k v]))
         mac  (loop [s (vector-of :byte) i 0]
+               (println s)
                (if (= i 20)
-                 s
+                 ; We can't get the last byte using the timig leak
+                 ; Try the 256 combination
+                 (filter (= 200 (comp status bytes->hex))
+                         (map (comp (partial conj s) unchecked-byte) (range 0 256)))
                  (let [v (map (comp (partial conj s) unchecked-byte) (range 0 256))]
                    (recur  (->> (map bytes->hex v)
                                 (map (fn [x] (repeatedly 100 #(:time (benchmark status x)))))
                                 (#(interleave % v))
                                 (apply hash-map)
                                 (#(reduce-kv max-box (first %) %))
-                                (last)
-                                )
+                                (last))
                            (inc i)))))]
     mac
     ;; (if (= 200 (status (bytes->hex mac)))
