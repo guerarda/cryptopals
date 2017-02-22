@@ -1,36 +1,11 @@
-# cryptopals
+# Cryptopals Crypto Challenges
 
-FIXME: description
+My attempt at solving the [Cryptopals
+challenges](https://cryptopals.com).  Written as a project for
+learning Clojure.
 
-## Installation
+The solution to the challenges are in src/cryptopals/challenges/.
 
-Download from http://example.com/FIXME.
-
-## Usage
-
-FIXME: explanation
-
-    $ java -jar cryptopals-0.1.0-standalone.jar [args]
-
-## Options
-
-FIXME: listing of options this app accepts.
-
-## Examples
-
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
-
-## License
-
-Copyright © 2015 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+In src/cryptopals you'll find function for block & stream cipher, an
+implementation of MT19937 PRNG (plus what's needed to crack it), an
+implementation of SHA-1 and some bit manipulation functions.
